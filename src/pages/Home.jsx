@@ -29,6 +29,7 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const audioRef = useRef(null);
+  const waveformPlayerRef = useRef(null);
 
   const queryClient = useQueryClient();
 
@@ -111,11 +112,11 @@ export default function Home() {
   };
 
   const handlePlayPause = () => {
-    if (audioRef.current) {
+    if (waveformPlayerRef.current) {
       if (isPlaying) {
-        audioRef.current.pause();
+        waveformPlayerRef.current.pause();
       } else {
-        audioRef.current.play();
+        waveformPlayerRef.current.play();
       }
       setIsPlaying(!isPlaying);
     }
@@ -143,17 +144,8 @@ export default function Home() {
 
     setIsBuffering(true);
 
-    const handleCanPlay = async () => {
+    const handleCanPlay = () => {
       setIsBuffering(false);
-      if (isPlaying) {
-        try {
-          await audio.play();
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error('Playback failed:', error);
-          }
-        }
-      }
     };
 
     const handleWaiting = () => setIsBuffering(true);
@@ -162,18 +154,13 @@ export default function Home() {
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('waiting', handleWaiting);
     audio.addEventListener('playing', handlePlaying);
-    
-    // If audio is already ready, play immediately
-    if (audio.readyState >= 3 && isPlaying) {
-      handleCanPlay();
-    }
 
     return () => {
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('waiting', handleWaiting);
       audio.removeEventListener('playing', handlePlaying);
     };
-  }, [currentTrack, isPlaying]);
+  }, [currentTrack]);
 
   const handleUploadComplete = () => {
     queryClient.invalidateQueries({ queryKey: ['tracks'] });
@@ -274,7 +261,7 @@ export default function Home() {
               <h1 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight">
                 Master Your Mix<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 via-fuchsia-200 to-white">
-                  With AI Intelligence
+                  With Legendary Intelligence
                 </span>
               </h1>
               
@@ -485,7 +472,8 @@ export default function Home() {
         onPlayPause={handlePlayPause}
         onNext={handleNext}
         onPrevious={handlePrevious}
-        audioRef={audioRef} />
+        audioRef={audioRef}
+        waveformPlayerRef={waveformPlayerRef} />
 
     </div>);
 

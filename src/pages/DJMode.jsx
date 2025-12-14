@@ -10,6 +10,7 @@ import MusicVisualizer from '@/components/dj/MusicVisualizer';
 import MIDIMappingModal from '@/components/midi/MIDIMappingModal';
 import { useMIDI } from '@/components/midi/useMIDI';
 import DJAssistant from '@/components/ai/DJAssistant';
+import NextTrackSuggestions from '@/components/dj/NextTrackSuggestions';
 import { Button } from "@/components/ui/button";
 import { Menu, X, Circle, Square, Usb, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -598,7 +599,32 @@ export default function DJMode() {
 
         {/* AI Assistant Sidebar */}
         {assistantOpen && (
-          <div className="w-96 h-full bg-zinc-950 border-l border-zinc-800 overflow-y-auto p-4">
+          <div className="w-96 h-full bg-zinc-950 border-l border-zinc-800 overflow-y-auto p-4 space-y-4">
+            {/* Real-time Next Track Suggestions */}
+            <NextTrackSuggestions
+              currentTrack={deckAPlaying ? deckATrack : deckBPlaying ? deckBTrack : null}
+              allTracks={tracks}
+              onSelectTrack={(track) => {
+                if (!deckATrack || !deckAPlaying) {
+                  setActiveDeck('A');
+                  handleTrackSelect(track);
+                } else if (!deckBTrack || !deckBPlaying) {
+                  setActiveDeck('B');
+                  handleTrackSelect(track);
+                } else {
+                  // Load to whichever deck is not currently audible (based on crossfader)
+                  if (crossfader < 50) {
+                    setActiveDeck('B');
+                    handleTrackSelect(track);
+                  } else {
+                    setActiveDeck('A');
+                    handleTrackSelect(track);
+                  }
+                }
+              }}
+              compact={true}
+            />
+
             <DJAssistant
               currentTrack={deckAPlaying ? deckATrack : deckBPlaying ? deckBTrack : null}
               allTracks={tracks}

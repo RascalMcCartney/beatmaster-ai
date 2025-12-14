@@ -24,6 +24,12 @@ import SharedContent from "./SharedContent";
 
 import Offline from "./Offline";
 
+import Artist from "./Artist";
+
+import Album from "./Album";
+
+import PrepSets from "./PrepSets";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -51,6 +57,12 @@ const PAGES = {
     SharedContent: SharedContent,
     
     Offline: Offline,
+    
+    Artist: Artist,
+    
+    Album: Album,
+    
+    PrepSets: PrepSets,
     
 }
 
@@ -102,6 +114,12 @@ function PagesContent() {
                 <Route path="/SharedContent" element={<SharedContent />} />
                 
                 <Route path="/Offline" element={<Offline />} />
+                
+                <Route path="/Artist" element={<Artist />} />
+                
+                <Route path="/Album" element={<Album />} />
+                
+                <Route path="/PrepSets" element={<PrepSets />} />
                 
             </Routes>
         </Layout>

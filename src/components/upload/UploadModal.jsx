@@ -16,6 +16,9 @@ export default function UploadModal({ open, onOpenChange, onUploadComplete }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [dragOver, setDragOver] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [cancelRequested, setCancelRequested] = useState(false);
+  const abortControllerRef = React.useRef(null);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -80,100 +83,113 @@ export default function UploadModal({ open, onOpenChange, onUploadComplete }) {
 
   const uploadFiles = async () => {
     setUploading(true);
+    setCancelRequested(false);
+    setCurrentTrackIndex(0);
+    abortControllerRef.current = new AbortController();
     const results = [];
 
     for (let i = 0; i < files.length; i++) {
+      // Check for cancellation
+      if (cancelRequested || abortControllerRef.current?.signal.aborted) {
+        setUploadProgress(prev => ({ ...prev, [i]: 'cancelled' }));
+        break;
+      }
+
       const file = files[i];
+      setCurrentTrackIndex(i + 1);
       setUploadProgress(prev => ({ ...prev, [i]: 'uploading' }));
 
-      // Extract metadata and artwork
-      const metadata = await extractMetadata(file);
+      try {
+        // Extract metadata and artwork
+        setUploadProgress(prev => ({ ...prev, [i]: { status: 'uploading', step: 'metadata' } }));
+        const metadata = await extractMetadata(file);
+        
+        // Upload audio file
+        setUploadProgress(prev => ({ ...prev, [i]: { status: 'uploading', step: 'audio' } }));
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
       
-      // Upload audio file
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      
-      // Upload artwork if available
-      let artwork_url = null;
-      if (metadata.blob) {
-        try {
-          console.log('Uploading artwork...');
-          // Convert blob to File object with proper naming
-          const artworkFile = new File([metadata.blob], `artwork_${Date.now()}.jpg`, { type: metadata.blob.type });
-          const artworkResult = await base44.integrations.Core.UploadFile({ file: artworkFile });
-          artwork_url = artworkResult.file_url;
-          console.log('Artwork uploaded:', artwork_url);
-        } catch (error) {
-          console.error('Artwork upload error:', error);
+        // Upload artwork if available
+        let artwork_url = null;
+        if (metadata.blob) {
+          try {
+            setUploadProgress(prev => ({ ...prev, [i]: { status: 'uploading', step: 'artwork' } }));
+            console.log('Uploading artwork...');
+            // Convert blob to File object with proper naming
+            const artworkFile = new File([metadata.blob], `artwork_${Date.now()}.jpg`, { type: metadata.blob.type });
+            const artworkResult = await base44.integrations.Core.UploadFile({ file: artworkFile });
+            artwork_url = artworkResult.file_url;
+            console.log('Artwork uploaded:', artwork_url);
+          } catch (error) {
+            console.error('Artwork upload error:', error);
+          }
+        } else {
+          console.log('No artwork found in metadata');
         }
-      } else {
-        console.log('No artwork found in metadata');
-      }
+        
+        // Use metadata title if available, otherwise filename
+        const title = metadata.title || file.name.replace(/\.[^/.]+$/, '');
+        
+        setUploadProgress(prev => ({ ...prev, [i]: { status: 'analyzing', step: 'creating' } }));
       
-      // Use metadata title if available, otherwise filename
-      const title = metadata.title || file.name.replace(/\.[^/.]+$/, '');
-      
-      setUploadProgress(prev => ({ ...prev, [i]: 'analyzing' }));
-      
-      // Create track with pending analysis
-      const track = await base44.entities.Track.create({
-        title,
-        artist: metadata.artist || undefined,
-        album: metadata.album || undefined,
-        audio_url: file_url,
-        artwork_url: artwork_url || undefined,
-        duration: metadata.duration || undefined,
-        analysis_status: 'analyzing'
-      });
+        // Create track with pending analysis
+        const track = await base44.entities.Track.create({
+          title,
+          artist: metadata.artist || undefined,
+          album: metadata.album || undefined,
+          audio_url: file_url,
+          artwork_url: artwork_url || undefined,
+          duration: metadata.duration || undefined,
+          analysis_status: 'analyzing'
+        });
 
-      // Analyze with AI - Enhanced Deep Analysis
-      const analysis = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an expert music analyst, producer, audio engineer, and DJ with deep knowledge of music theory, production techniques, harmonic analysis, and sonic characteristics. Analyze this audio track titled "${title}".
+        // Analyze with AI - Enhanced Deep Analysis
+        setUploadProgress(prev => ({ ...prev, [i]: { status: 'analyzing', step: 'ai' } }));
+        const analysis = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are an expert music analyst, producer, audio engineer, and DJ with deep knowledge of music theory, production techniques, harmonic analysis, and sonic characteristics. Analyze this audio track titled "${title}" by ${metadata.artist || 'Unknown Artist'}.
 
-Provide a COMPREHENSIVE DEEP ANALYSIS including:
+Provide a COMPREHENSIVE DEEP ANALYSIS for advanced filtering and recommendations:
 
 1. GENRE CLASSIFICATION:
-   - Primary genre and highly specific sub-genre
-   - Be extremely specific (e.g., "melodic techno", "liquid drum & bass", "deep house", "progressive trance")
+   - Primary genre and highly specific sub-genre (e.g., "melodic techno", "liquid drum & bass", "progressive house")
 
-2. TECHNICAL ANALYSIS:
-   - BPM (realistic range 60-200)
-   - Musical key (e.g., "C Major", "A Minor")
-   - Camelot notation for harmonic mixing
-   - Energy level (1-10 scale)
+2. TECHNICAL METRICS:
+   - BPM: Accurate tempo (realistic range 60-200)
+   - Musical key: Full key name (e.g., "C Major", "A Minor", "F♯ Minor")
+   - Camelot notation: For harmonic DJ mixing (e.g., "8A", "5B")
+   - Energy level: Overall intensity (1-10 scale)
 
-3. ADVANCED HARMONIC ANALYSIS:
-   - Harmonic progression: Describe the chord movement and harmonic journey
-   - Chord progression: List the chord progression pattern (e.g., ["I", "V", "vi", "IV"])
-   - Harmonic tension: Level of tension/dissonance (1-10)
-   - Modal quality: Modal characteristics (e.g., "major", "minor", "dorian", "lydian")
-   - Tonal center: Primary root note/tonal center
-   - Harmonic movement: Type of movement (e.g., "circular", "ascending", "chromatic", "static")
-   - Dynamic range: Variation in volume/intensity (1-10)
+3. DETAILED HARMONIC ANALYSIS (for key compatibility & harmonic mixing):
+   - Harmonic progression: Detailed description of chord movement and harmonic journey (e.g., "Circular progression creating tension and release, building through minor chords into major resolution")
+   - Chord progression: Specific chord sequence using Roman numerals (e.g., ["I", "V", "vi", "IV"] or ["i", "VI", "III", "VII"])
+   - Harmonic tension: Amount of dissonance/tension throughout (1-10, where 1=consonant/stable, 10=highly dissonant/tense)
+   - Modal quality: Exact modal characteristics (e.g., "major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "aeolian", "locrian")
+   - Tonal center: Primary root note and stability (e.g., "Strong C root", "Floating between D and E", "Ambiguous tonal center")
+   - Harmonic movement: Progression type (e.g., "circular", "ascending", "descending", "chromatic", "static", "modal interchange", "parallel")
 
-4. SONIC CHARACTERISTICS:
-   - Brightness: High-frequency content and sparkle (1-10)
-   - Warmth: Low-frequency richness and analog quality (1-10)
-   - Depth: Spatial depth and dimension (1-10)
-   - Clarity: Mix definition and separation (1-10)
-   - Texture: Overall sonic texture (e.g., "smooth", "gritty", "crystalline", "analog", "digital")
-   - Bass presence: Sub-bass and bass weight (1-10)
-   - Stereo width: Stereo field width (1-10)
-   - Transient sharpness: Attack sharpness (1-10)
-   - Saturation level: Harmonic saturation/distortion (1-10)
+4. SONIC CHARACTERISTICS (for sound matching & filtering):
+   - Brightness: High-frequency presence and air (1-10, where 1=dark/muffled/dull, 10=bright/sparkly/airy)
+   - Warmth: Low-mid richness and analog character (1-10, where 1=cold/thin/digital, 10=warm/full/analog)
+   - Depth: 3D spatial dimension and layering (1-10, where 1=flat/2D/dry, 10=deep/3D/spacious)
+   - Clarity: Mix separation and definition (1-10, where 1=muddy/blurred/messy, 10=crystal clear/defined/transparent)
+   - Texture: Overall sonic feel (choose: "smooth", "gritty", "crystalline", "analog", "digital", "organic", "synthetic", "polished", "raw", "ethereal")
+   - Bass presence: Sub and bass weight (1-10, where 1=minimal bass/light, 10=bass-heavy/sub-dominant)
+   - Stereo width: Stereo field spread (1-10, where 1=mono/narrow/centered, 10=wide/expansive/panoramic)
+   - Transient sharpness: Percussive attack clarity (1-10, where 1=soft/rounded/smooth, 10=sharp/punchy/aggressive)
+   - Saturation level: Harmonic richness/distortion (1-10, where 1=clean/pristine, 10=heavily saturated/overdriven)
 
-5. PRODUCTION TECHNIQUES:
-   - Compression style: Approach (e.g., "heavy", "transparent", "pumping", "glue", "light")
-   - Reverb style: Reverb type (e.g., "plate", "hall", "room", "spring", "shimmer", "none")
-   - Spatial depth: 3D positioning and depth (1-10)
-   - Layering complexity: Sound layering complexity (1-10)
-   - Production quality: Overall production quality (1-10)
+5. PRODUCTION TECHNIQUES (for production style matching):
+   - Compression style: Dynamic control approach (choose one: "heavy", "transparent", "pumping", "glue", "light", "sidechain", "parallel", "multiband", "none")
+   - Reverb style: Spatial effect type (choose one: "plate", "hall", "room", "spring", "shimmer", "convolution", "digital", "gated", "reverse", "none")
+   - Spatial depth: Front-to-back positioning (1-10, where 1=upfront/dry/intimate, 10=distant/wet/spacious)
+   - Layering complexity: Number and intricacy of sound layers (1-10, where 1=minimal layers/sparse, 10=highly layered/dense)
+   - Production quality: Technical execution and polish (1-10, where 1=lo-fi/amateur/rough, 10=professional/mastered/polished)
 
-6. ADVANCED RHYTHMIC ANALYSIS:
-   - Rhythmic complexity: Overall rhythm complexity (1-10)
-   - Syncopation: Level of syncopation (1-10)
-   - Swing: Amount of swing/shuffle (1-10)
-   - Groove type: Groove style (e.g., "straight", "swung", "shuffled", "syncopated", "polyrhythmic")
-   - Percussion complexity: Drum pattern complexity (1-10)
+6. RHYTHMIC ANALYSIS (for groove & beat matching):
+   - Rhythmic complexity: Pattern intricacy (1-10, where 1=simple/repetitive/basic, 10=complex/polyrhythmic/intricate)
+   - Syncopation: Off-beat emphasis level (1-10, where 1=on-beat/quantized/straight, 10=highly syncopated/off-grid)
+   - Swing: Shuffle/groove amount (1-10, where 1=straight/quantized/rigid, 10=heavily swung/loose/groovy)
+   - Groove type: Rhythmic feel (choose one: "straight", "swung", "shuffled", "syncopated", "polyrhythmic", "triplet", "dotted", "half-time", "double-time")
+   - Percussion complexity: Drum programming detail (1-10, where 1=minimal/simple/basic, 10=intricate/layered/complex)
 
 7. INSTRUMENTATION ANALYSIS:
    - List all prominent instruments/sounds (e.g., ["synth pad", "808 bass", "clap", "hi-hats", "vocal chops", "piano"])
@@ -192,7 +208,28 @@ Provide a COMPREHENSIVE DEEP ANALYSIS including:
 10. STRUCTURAL ANALYSIS:
    - Buildup intensity (1-10): How intense are the buildups/crescendos
    - Drop impact (1-10): Impact of drops/climaxes
-   - Estimate timestamps for sections (intro, verse, chorus, bridge, breakdown, drop, outro)
+   - Structure: Estimate timestamps in SECONDS for track sections. Based on the track duration (${metadata.duration ? metadata.duration.toFixed(0) : 'unknown'} seconds), provide realistic start and end times for:
+     * intro: Single object with start/end times
+     * verse: Array of verse sections with start/end times
+     * chorus: Array of chorus sections with start/end times  
+     * bridge: Single object with start/end times (if applicable)
+     * breakdown: Array of breakdown sections with start/end times (if applicable)
+     * drop: Array of drop sections with start/end times (if applicable)
+     * outro: Single object with start/end times
+   
+   IMPORTANT: 
+   - All times must be in SECONDS (not minutes)
+   - Times must be realistic based on the track's ${metadata.duration ? metadata.duration.toFixed(0) : 'unknown'} second duration
+   - Sections should not overlap
+   - Not all tracks have all sections (especially bridge, breakdown, drop)
+   - Typical track structure timing:
+     * Intro: 0-15s or 0-30s
+     * Verse: 30-60s sections
+     * Chorus: 30-60s sections  
+     * Bridge: 15-30s (if present)
+     * Breakdown: 15-45s (electronic music)
+     * Drop: 30-60s (electronic music)
+     * Outro: Last 15-30s of track
 
 11. DJ MIXING ANALYSIS:
    - Danceability (1-10)
@@ -329,21 +366,36 @@ Base analysis on the title "${title}", artist patterns, genre conventions, and m
         }
       });
 
-      // Update track with analysis
-      await base44.entities.Track.update(track.id, {
-        ...analysis,
-        analysis_status: 'complete'
-      });
+        // Update track with analysis
+        await base44.entities.Track.update(track.id, {
+          ...analysis,
+          analysis_status: 'complete'
+        });
 
-      setUploadProgress(prev => ({ ...prev, [i]: 'complete' }));
-      results.push({ ...track, ...analysis });
+        setUploadProgress(prev => ({ ...prev, [i]: 'complete' }));
+        results.push({ ...track, ...analysis });
+      } catch (error) {
+        console.error('Upload error:', error);
+        setUploadProgress(prev => ({ ...prev, [i]: 'error' }));
+      }
     }
 
     setUploading(false);
-    setFiles([]);
-    setUploadProgress({});
-    onUploadComplete?.(results);
-    onOpenChange(false);
+    setCurrentTrackIndex(0);
+    
+    if (!cancelRequested && !abortControllerRef.current?.signal.aborted) {
+      setFiles([]);
+      setUploadProgress({});
+      onUploadComplete?.(results);
+      onOpenChange(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setCancelRequested(true);
+    abortControllerRef.current?.abort();
+    setUploading(false);
+    setCurrentTrackIndex(0);
   };
 
   return (
@@ -401,17 +453,33 @@ Base analysis on the title "${title}", artist patterns, genre conventions, and m
                     {(file.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
                 </div>
-                {uploadProgress[index] === 'uploading' && (
-                  <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
+                {uploadProgress[index]?.status === 'uploading' && (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                    <span className="text-xs text-violet-400">
+                      {uploadProgress[index]?.step === 'metadata' && 'Reading...'}
+                      {uploadProgress[index]?.step === 'audio' && 'Uploading...'}
+                      {uploadProgress[index]?.step === 'artwork' && 'Artwork...'}
+                    </span>
+                  </div>
                 )}
-                {uploadProgress[index] === 'analyzing' && (
-                  <div className="flex items-center gap-2 text-amber-400">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-xs">Analyzing...</span>
+                {uploadProgress[index]?.status === 'analyzing' && (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                    <span className="text-xs text-amber-400">
+                      {uploadProgress[index]?.step === 'creating' && 'Creating...'}
+                      {uploadProgress[index]?.step === 'ai' && 'AI Analysis...'}
+                    </span>
                   </div>
                 )}
                 {uploadProgress[index] === 'complete' && (
                   <CheckCircle2 className="w-5 h-5 text-green-400" />
+                )}
+                {uploadProgress[index] === 'error' && (
+                  <X className="w-5 h-5 text-red-400" />
+                )}
+                {uploadProgress[index] === 'cancelled' && (
+                  <span className="text-xs text-zinc-500">Cancelled</span>
                 )}
                 {!uploadProgress[index] && (
                   <Button
@@ -428,25 +496,50 @@ Base analysis on the title "${title}", artist patterns, genre conventions, and m
           </div>
         )}
 
+        {/* Overall Progress */}
+        {uploading && files.length > 1 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-zinc-400">Overall Progress</span>
+              <span className="text-white font-medium">{currentTrackIndex} of {files.length}</span>
+            </div>
+            <Progress 
+              value={(currentTrackIndex / files.length) * 100} 
+              className="h-2 bg-zinc-800"
+            />
+          </div>
+        )}
+
         {/* Upload Button */}
         {files.length > 0 && (
-          <Button
-            onClick={uploadFiles}
-            disabled={uploading}
-            className="w-full bg-violet-600 hover:bg-violet-700 text-white"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload & Analyze {files.length} Track{files.length > 1 ? 's' : ''}
-              </>
+          <div className="flex gap-2">
+            <Button
+              onClick={uploadFiles}
+              disabled={uploading}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing {currentTrackIndex}/{files.length}...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload & Analyze {files.length} Track{files.length > 1 ? 's' : ''}
+                </>
+              )}
+            </Button>
+            {uploading && (
+              <Button
+                onClick={handleCancel}
+                variant="outline"
+                className="bg-transparent border-zinc-700 text-white hover:bg-zinc-800"
+              >
+                Cancel
+              </Button>
             )}
-          </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>

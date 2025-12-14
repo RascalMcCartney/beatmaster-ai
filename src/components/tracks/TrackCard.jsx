@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, MoreHorizontal, Music2, Pencil, Trash2, Share2, Download } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, Music2, Pencil, Trash2, Share2, Download, User, Disc } from 'lucide-react';
 import DownloadButton from '@/components/offline/DownloadButton';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 const formatDuration = (seconds) => {
   if (!seconds) return '--:--';
@@ -41,6 +43,7 @@ export default function TrackCard({
   playlists,
   viewMode = 'grid' 
 }) {
+  const navigate = useNavigate();
   if (viewMode === 'list') {
     return (
       <div 
@@ -137,6 +140,30 @@ export default function TrackCard({
               <Pencil className="w-4 h-4 mr-2" />
               Edit Track
             </DropdownMenuItem>
+            {track.artist && (
+              <DropdownMenuItem 
+                className="text-zinc-300 focus:text-white focus:bg-zinc-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(createPageUrl('Artist') + `?name=${encodeURIComponent(track.artist)}`);
+                }}
+              >
+                <User className="w-4 h-4 mr-2" />
+                View Artist
+              </DropdownMenuItem>
+            )}
+            {track.album && track.artist && (
+              <DropdownMenuItem 
+                className="text-zinc-300 focus:text-white focus:bg-zinc-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(createPageUrl('Album') + `?name=${encodeURIComponent(track.album)}&artist=${encodeURIComponent(track.artist)}`);
+                }}
+              >
+                <Disc className="w-4 h-4 mr-2" />
+                View Album
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="text-zinc-300 focus:text-white focus:bg-zinc-800">
               Add to queue
             </DropdownMenuItem>
@@ -274,6 +301,30 @@ export default function TrackCard({
               <Pencil className="w-4 h-4 mr-2" />
               Edit Track
             </DropdownMenuItem>
+            {track.artist && (
+              <DropdownMenuItem 
+                className="text-zinc-300 focus:text-white focus:bg-zinc-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(createPageUrl('Artist') + `?name=${encodeURIComponent(track.artist)}`);
+                }}
+              >
+                <User className="w-4 h-4 mr-2" />
+                View Artist
+              </DropdownMenuItem>
+            )}
+            {track.album && track.artist && (
+              <DropdownMenuItem 
+                className="text-zinc-300 focus:text-white focus:bg-zinc-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(createPageUrl('Album') + `?name=${encodeURIComponent(track.album)}&artist=${encodeURIComponent(track.artist)}`);
+                }}
+              >
+                <Disc className="w-4 h-4 mr-2" />
+                View Album
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="text-zinc-300 focus:text-white focus:bg-zinc-800">
               Add to queue
             </DropdownMenuItem>

@@ -14,13 +14,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuTrigger } from
+"@/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from
+"@/components/ui/popover";
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -29,18 +29,19 @@ import { Mail, Github, Linkedin } from 'lucide-react';
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [betaBannerVisible, setBetaBannerVisible] = useState(true);
 
   const urlParams = new URLSearchParams(window.location.search);
   const selectedPlaylistId = urlParams.get('id');
 
   const { data: user } = useQuery({
     queryKey: ['user'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => base44.auth.me()
   });
 
   const { data: playlists = [], refetch } = useQuery({
     queryKey: ['playlists'],
-    queryFn: () => base44.entities.Playlist.list('-created_date'),
+    queryFn: () => base44.entities.Playlist.list('-created_date')
   });
 
   const handleCreatePlaylist = async (data) => {
@@ -55,13 +56,20 @@ export default function Layout({ children, currentPageName }) {
 
   const getInitials = (name) => {
     if (!name) return 'U';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    return name.
+    split(' ').
+    map((n) => n[0]).
+    join('').
+    toUpperCase().
+    slice(0, 2);
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBetaBannerVisible(false);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
@@ -123,24 +131,24 @@ export default function Layout({ children, currentPageName }) {
         `}</style>
 
         {/* Top Bar */}
-        <div className="h-16 bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-800 flex items-center justify-between px-6 sticky top-0 z-40">
+        <div className="h-16 bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-800 flex items-center justify-between px-6 sticky top-0 z-50">
           <div className="flex items-center gap-4">
             <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden text-white"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
+            variant="ghost"
+            size="icon"
+            className="lg:hidden text-white"
+            onClick={() => setSidebarOpen(!sidebarOpen)}>
+
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
             <div className="flex items-center gap-3">
               <Popover>
                 <PopoverTrigger asChild>
-                  <img 
-                    src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6933fc08ab342a0fdfb70f22/cc9b1301b_Colorlogo-nobackground.png"
-                    alt="Logo"
-                    className="h-8 w-auto cursor-pointer animate-pulse"
-                  />
+                  <img
+                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6933fc08ab342a0fdfb70f22/cc9b1301b_Colorlogo-nobackground.png"
+                  alt="Logo"
+                  className="h-8 w-auto cursor-pointer animate-pulse" />
+
                 </PopoverTrigger>
                 <PopoverContent className="w-80 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/50 border border-violet-500/20 p-4 rounded-2xl shadow-2xl shadow-violet-500/20" align="start" sideOffset={12}>
                   <div className="absolute -top-2 left-8 w-4 h-4 rotate-45 bg-gradient-to-br from-zinc-900 to-violet-950/50 border-l border-t border-violet-500/20" />
@@ -150,28 +158,28 @@ export default function Layout({ children, currentPageName }) {
                       <p className="text-sm text-zinc-400">Software Engineering Technical Lead</p>
                     </div>
                     <div className="space-y-2 text-sm">
-                      <a 
-                        href="mailto:adam@mccartn3y.net" 
-                        className="flex items-center gap-2 text-zinc-300 hover:text-violet-400 transition-colors"
-                      >
+                      <a
+                      href="mailto:adam@mccartn3y.net"
+                      className="flex items-center gap-2 text-zinc-300 hover:text-violet-400 transition-colors">
+
                         <Mail className="w-4 h-4" />
                         <span>adam@mccartn3y.net</span>
                       </a>
-                      <a 
-                        href="https://github.com/RascalMcCartney" 
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-zinc-300 hover:text-violet-400 transition-colors"
-                      >
+                      <a
+                      href="https://github.com/RascalMcCartney"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-zinc-300 hover:text-violet-400 transition-colors">
+
                         <Github className="w-4 h-4" />
                         <span>github.com/RascalMcCartney</span>
                       </a>
-                      <a 
-                        href="https://www.linkedin.com/in/adam-mccartney/" 
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-zinc-300 hover:text-violet-400 transition-colors"
-                      >
+                      <a
+                      href="https://www.linkedin.com/in/adam-mccartney/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-zinc-300 hover:text-violet-400 transition-colors">
+
                         <Linkedin className="w-4 h-4" />
                         <span>linkedin.com/in/adam-mccartney</span>
                       </a>
@@ -179,16 +187,16 @@ export default function Layout({ children, currentPageName }) {
                   </div>
                 </PopoverContent>
               </Popover>
-              <div className="h-8 w-px bg-zinc-700" />
-              <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6933fc08ab342a0fdfb70f22/4a7062f3b_BeatMaster_logo_2.png"
-                alt="BeatMaster.AI"
-                className="h-8 w-auto"
-              />
             </div>
           </div>
 
-          <div className="flex-1" />
+          <div className="flex-1 flex items-center justify-center">
+            <img 
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6933fc08ab342a0fdfb70f22/2af494f46_beatmaster_gen_2.png"
+              alt="BeatMaster"
+              className="h-10 w-auto"
+            />
+          </div>
 
           <OfflineIndicator />
 
@@ -198,26 +206,26 @@ export default function Layout({ children, currentPageName }) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <Avatar className="h-10 w-10">
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  <AvatarFallback className="bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white font-semibold">
+                {user?.avatar_url ?
+                <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover rounded-full" /> :
+
+                <AvatarFallback className="bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white font-semibold">
                     {getInitials(user?.full_name)}
                   </AvatarFallback>
-                )}
+                }
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-800" align="end">
             <div className="flex items-center gap-2 p-2">
               <Avatar className="h-8 w-8">
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  <AvatarFallback className="bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white text-xs">
+                {user?.avatar_url ?
+                <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover rounded-full" /> :
+
+                <AvatarFallback className="bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white text-xs">
                     {getInitials(user?.full_name)}
                   </AvatarFallback>
-                )}
+                }
               </Avatar>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium text-white">{user?.full_name || 'User'}</p>
@@ -244,38 +252,59 @@ export default function Layout({ children, currentPageName }) {
         </DropdownMenu>
         </div>
 
+        {/* Beta Banner */}
+        {betaBannerVisible && (
+          <div className="bg-gradient-to-r from-amber-500/10 via-violet-500/10 to-fuchsia-500/10 border-b border-amber-500/20 px-6 py-3">
+            <div className="flex items-center justify-center gap-2 text-sm relative">
+              <span className="text-2xl">🚧</span>
+              <p className="text-amber-200/90">
+                <span className="font-semibold">Beta Vibes Only!</span> Things might get a little funky while we're tuning the mix. If something breaks, that's just part of the creative process... right? 
+              </p>
+              <span className="text-2xl">🎧</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 h-6 w-6 text-amber-200/60 hover:text-amber-200 hover:bg-amber-500/20"
+                onClick={() => setBetaBannerVisible(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-1 min-h-0">
 
       {/* Sidebar - Desktop */}
       <div className="hidden lg:block w-64 h-full sticky top-0">
-        <Sidebar 
-          playlists={playlists}
-          currentPage={currentPageName}
-          onCreatePlaylist={() => setCreateOpen(true)}
-          selectedPlaylistId={selectedPlaylistId}
-        />
+        <Sidebar
+            playlists={playlists}
+            currentPage={currentPageName}
+            onCreatePlaylist={() => setCreateOpen(true)}
+            selectedPlaylistId={selectedPlaylistId} />
+
       </div>
 
       {/* Sidebar - Mobile */}
-      {sidebarOpen && (
+      {sidebarOpen &&
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
+            onClick={() => setSidebarOpen(false)} />
+
           <div className="fixed left-0 top-0 h-screen w-64 z-50 lg:hidden">
-            <Sidebar 
+            <Sidebar
               playlists={playlists}
               currentPage={currentPageName}
               onCreatePlaylist={() => {
                 setCreateOpen(true);
                 setSidebarOpen(false);
               }}
-              selectedPlaylistId={selectedPlaylistId}
-            />
+              selectedPlaylistId={selectedPlaylistId} />
+
           </div>
         </>
-      )}
+        }
 
       {/* Main Content */}
       <main className="flex-1 min-h-0">
@@ -287,8 +316,8 @@ export default function Layout({ children, currentPageName }) {
       <CreatePlaylistModal
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onSave={handleCreatePlaylist}
-      />
-      </div>
-      );
-      }
+        onSave={handleCreatePlaylist} />
+
+      </div>);
+
+}
